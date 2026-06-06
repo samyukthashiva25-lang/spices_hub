@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '/services/backend_service.dart'; // Adjust path based on your project structure
+import '/services/backend_service.dart'; 
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});

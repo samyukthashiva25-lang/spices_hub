@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '/services/backend_service.dart'; // Adjust path based on your project structure
+import '/services/session_manager.dart'; // Session manager file to cache runtime configurations
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // WEB-SAFE LOGIN INTEGRATION LOGIC
+  // WEB-SAFE LOGIN INTEGRATION LOGIC WITH GLOBAL CACHE LAYER
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -35,27 +36,44 @@ class _LoginPageState extends State<LoginPage> {
       final String phonenumber = _phoneController.text.trim();
       final String password = _passwordController.text.trim();
 
-      // Send credentials downstream to your Spring Boot Backend for validation
-      // Adjust BackendService down the road to handle token validation returns
-      bool loginSuccess = await _backendService.loginUser(phonenumber, password);
+      // 1. Fetch the rich User Profile map configuration from backend
+      final Map<String, dynamic> userProfile = await _backendService.loginUser(phonenumber, password);
 
-      if (loginSuccess && mounted) {
-        // Route your authenticated user into your Main BottomNavigationBar Wrapper
-        Navigator.pushReplacementNamed(context, '/home');
+      // 2. Validate success by confirming a structural tracking UID exists
+      if (userProfile.containsKey('uid') && userProfile['uid'] != null && mounted) {
+        
+        // ✅ INTEGRATED SESSION MANAGER CACHE: Store the verified user profile map layout instantly
+        SessionManager.instance.currentUserProfile = userProfile;
+
+        // Parse profile payload parameters matching backend data schemas
+        final String status = (userProfile['status'] ?? 'PENDING').toString().toUpperCase().trim();
+        
+        // 3. Conditional Routing Module: Direct users based on administrative verification states
+        if (status == 'APPROVED') {
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/pending');
+        }
       } else {
-        throw Exception("Invalid phonenumber or matching password profile configuration.");
+        throw Exception("Invalid phone number or matching password profile configuration.");
       }
     } catch (e) {
-      // Isolate platform proxy objects cleanly from rendering directly into Web standard threads
+      // Isolate backend runtime exception strings cleanly for UI SnackBar rendering
       final String fallbackMsg = e.toString().replaceAll("Exception:", "").trim();
       debugPrint("Auth Error Trace: $fallbackMsg");
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(fallbackMsg)),
+          SnackBar(
+            content: Text(fallbackMsg),
+            backgroundColor: Colors.redAccent.shade700,
+          ),
         );
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -108,7 +126,6 @@ class _LoginPageState extends State<LoginPage> {
             flex: 1,
             child: Center(
               child: SingleChildScrollView(
-               // maxHeight: MediaQuery.of(context).size.height,
                 padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 420),
@@ -184,7 +201,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: _isLoading 
                               ? const CircularProgressIndicator(color: Colors.white)
                               : const Text("Sign In", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                            ),
+                          ),
                         ),
 
                         const SizedBox(height: 24),

@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class BackendService {
-  final String baseUrl = "https://spiceshub-production.up.railway.app/api";
+  // final String baseUrl = "https://spiceshub-production.up.railway.app/api";
+  final String baseUrl = "http://localhost:8080/api"; // For local development
 
   // Shared headers helper
   Map<String, String> get _headers => {
@@ -10,25 +11,30 @@ class BackendService {
         "Accept": "application/json",
       };
 
-  Future<bool> loginUser(String phonenumber, String password) async {
+  /// Modified: Authenticates phone and password and returns the full User object configuration map.
+  /// Throws an informative exception containing the server's specific gatekeeper validation errors.
+  Future<Map<String, dynamic>> loginUser(String phonenumber, String password) async {
     try {
       final response = await http.post(
-        Uri.parse("$baseUrl/users/login"),
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
+        Uri.parse("$baseUrl/users/login"), // Keeping standard user auth endpoints
+        headers: _headers,
         body: jsonEncode({
           "phonenumber": phonenumber,
           "password": password,
         }),
       );
 
-      // Returns true if your backend database lookup confirms credentials match correctly
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        // Decode and return the user payload (UID, Status, CreditLimit, etc.)
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        // Capture specific security/gate exceptions thrown by your Java login rules
+        print("Login validation gate exception: ${response.body}");
+        throw Exception(response.body.isNotEmpty ? response.body : "Invalid credentials.");
+      }
     } catch (e) {
       print("Network Routing Failure: $e");
-      return false;
+      rethrow;
     }
   }
 
@@ -37,7 +43,6 @@ class BackendService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response.body.isNotEmpty ? jsonDecode(response.body) : true;
     } else {
-      // You can add specific logging or custom Exception throwing here
       print("API Error: ${response.statusCode} - ${response.body}");
       throw Exception('Failed to perform operation: ${response.statusCode}');
     }
@@ -73,18 +78,47 @@ class BackendService {
   }
 
   // ==========================
-  // SPICES (INVENTORY)
+  // PRODUCTS (SPICES INVENTORY)
+  // Updated endpoints to match Java ProductController annotations
   // ==========================
 
+  /// Synchronized with Java `@GetMapping("/all")` inside `ProductController`
   Future<List<dynamic>> getAllSpices() async {
-    final response = await http.get(Uri.parse("$baseUrl/spices/all"), headers: _headers);
+    final response = await http.get(Uri.parse("$baseUrl/products/all"), headers: _headers);
     return _handleResponse(response) as List<dynamic>;
   }
 
-  // Added: Get specific spice details
+  /// Synchronized with individual dynamic mapping hooks if needed
   Future<Map<String, dynamic>> getSpiceById(String spiceId) async {
-    final response = await http.get(Uri.parse("$baseUrl/spices/$spiceId"), headers: _headers);
+    final response = await http.get(Uri.parse("$baseUrl/products/$spiceId"), headers: _headers);
     return _handleResponse(response) as Map<String, dynamic>;
+  }
+
+  /// Synchronized with Java `@PostMapping("/add")` inside `ProductController`
+  Future<String> addSpice(Map<String, dynamic> productData) async {
+    final response = await http.post(
+      Uri.parse("$baseUrl/products/add"),
+      headers: _headers,
+      body: jsonEncode(productData),
+    );
+    final result = _handleResponse(response);
+    return result['id'] ?? '';
+  }
+
+  /// Synchronized with Java `@PutMapping("/update/{id}")` inside `ProductController`
+  Future<bool> updateSpice(String id, Map<String, dynamic> productData) async {
+    final response = await http.put(
+      Uri.parse("$baseUrl/products/update/$id"),
+      headers: _headers,
+      body: jsonEncode(productData),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// Synchronized with Java `@DeleteMapping("/delete/{id}")` inside `ProductController`
+  Future<bool> deleteSpice(String id) async {
+    final response = await http.delete(Uri.parse("$baseUrl/products/delete/$id"), headers: _headers);
+    return response.statusCode == 200;
   }
 
   // ==========================
@@ -104,7 +138,6 @@ class BackendService {
       return null;
     }
   }
-  
 
   // Added: Get order history for a user
   Future<List<dynamic>> getUserOrders(String userId) async {
@@ -112,4 +145,3 @@ class BackendService {
     return _handleResponse(response) as List<dynamic>;
   }
 }
-

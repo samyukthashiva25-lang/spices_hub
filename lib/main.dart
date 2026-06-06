@@ -5,7 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'firebase_options.dart'; 
 
-import 'features/auth/presentation/pages/home_page.dart';
 import 'features/auth/presentation/pages/cart_page.dart';
 import 'features/auth/presentation/pages/profile_page.dart';
 import 'features/auth/presentation/pages/product_list_page.dart';
@@ -49,7 +48,7 @@ class SpicesHubApp extends StatelessWidget {
         '/checkout': (context) => const CheckoutPage(),
         '/order_confirmation': (context) => const OrderConfirmationPage(),
         '/order_history': (context) => const OrderHistoryPage(),
-        '/signup': (context) => const SignupPage(), // Fixed explicit typo link name
+        '/signup': (context) => const SignupPage(),
         
         // ✅ FIX: Added placeholder route to safely intercept redirection logic from signup page
         '/pending': (context) => const PendingApprovalPage(), 
@@ -118,7 +117,8 @@ class _SplashScreenState extends State<SplashScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
                   child: GestureDetector(
                     onTap: () {
-                      Navigator.pushReplacementNamed(context, '/login');
+                      // ✅ UPDATED: Directs to the core Tab shell so the bottom footer bar mounts safely right away
+                      Navigator.pushReplacementNamed(context, '/login'); 
                     },
                     child: Container(
                       width: double.infinity,
@@ -193,12 +193,24 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const CartPage(),
-    const Center(child: Text("Support Screen")),
-    const ProfilePage(),
-  ];
+  // Modern navigation stack mapped to your UI mockup definitions
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      const ProductListPage(), // ✅ UPDATED: Merged your real Product layout into Tab index 0
+      const CartPage(),        // Tab Index 1
+      const Center(
+        child: Text(
+          "Support Live Chat Desk Gateway", 
+          style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
+        ),
+      ),                       // Tab Index 2
+      const ProfilePage(),     // Tab Index 3
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -207,24 +219,58 @@ class _MainWrapperState extends State<MainWrapper> {
         index: _currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble), label: 'Support'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: Colors.grey.shade200, width: 1.0),
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) => setState(() => _currentIndex = index),
+              backgroundColor: Colors.white,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: Colors.black,
+              unselectedItemColor: Colors.grey.shade400,
+              selectedFontSize: 11,
+              unselectedFontSize: 11,
+              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, height: 1.6),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, height: 1.6),
+              elevation: 0,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined), 
+                  activeIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.shopping_cart_outlined), 
+                  activeIcon: Icon(Icons.shopping_cart_rounded),
+                  label: 'Cart',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.chat_bubble_outline_rounded), 
+                  activeIcon: Icon(Icons.chat_bubble_rounded),
+                  label: 'Support',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline_rounded), 
+                  activeIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-// ✅ PLACEHOLDER: Prevents App crashes when redirected from Signup page signup actions
 class PendingApprovalPage extends StatelessWidget {
   const PendingApprovalPage({super.key});
 
