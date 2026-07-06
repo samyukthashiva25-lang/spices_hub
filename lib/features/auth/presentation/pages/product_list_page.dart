@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '/services/backend_service.dart';
 
-
 class ProductListPage extends StatefulWidget {
   const ProductListPage({super.key});
 
@@ -14,25 +13,17 @@ class _ProductListPageState extends State<ProductListPage> {
   final BackendService _backendService = BackendService();
   final TextEditingController _searchController = TextEditingController();
 
-  List<dynamic> _allActiveProducts = []; // Master copy of database products
-  List<dynamic> _filteredProducts = [];  // Runtime array matching UI state
+  List<dynamic> _allActiveProducts = []; 
+  List<dynamic> _filteredProducts = [];  
   
   bool _isLoading = true;
   String? _errorMessage;
   int _creditLimit = 10000;
   
-  // Tracks selected filtering token state (null represents "All")
   String? _selectedCategory;
 
-  // Exact 6 category map configuration synced directly with your admin selection list
-  final List<Map<String, String>> _categories = [
-    {"name": "Spices", "icon": "🌶️"},
-    {"name": "Nuts", "icon": "🥜"},
-    {"name": "Seeds", "icon": "🌱"},
-    {"name": "Dry Fruits", "icon": "🍇"},
-    {"name": "Herbs", "icon": "🌿"},
-    {"name": "Blends", "icon": "🍲"},
-  ];
+  // Exact category configuration matching the pill filters in image_ebafa9.jpg
+  final List<String> _categories = ["Spices", "Nuts", "Dry Fruits", "Seeds", "Herbs", "Blends"];
 
   @override
   void initState() {
@@ -64,7 +55,6 @@ class _ProductListPageState extends State<ProductListPage> {
       final List<dynamic> data = await _backendService.getAllSpices();
       
       setState(() {
-        // Only display active products matching your boolean model flag
         _allActiveProducts = data.where((product) {
           final bool isPublished = product['ispublished'] ?? false;
           return isPublished == true;
@@ -81,7 +71,6 @@ class _ProductListPageState extends State<ProductListPage> {
     }
   }
 
-  /// Combined Multi-Filter Pipeline Logic (Search + Category)
   void _applyFilters() {
     setState(() {
       _filteredProducts = _allActiveProducts.where((product) {
@@ -108,32 +97,8 @@ class _ProductListPageState extends State<ProductListPage> {
   void _onSearchChanged() => _applyFilters();
 
   void _selectCategoryFilter(String? categoryName) {
-    setState(() {
-      _selectedCategory = categoryName;
-    });
+    _selectedCategory = categoryName;
     _applyFilters();
-  }
-
-  String _parseVariantType(String? variantRawJson) {
-    if (variantRawJson == null || variantRawJson.trim().isEmpty) return 'Standard';
-    try {
-      final dynamic decoded = jsonDecode(variantRawJson);
-      if (decoded is List && decoded.isNotEmpty) {
-        List<String> types = [];
-        for (var item in decoded) {
-          if (item is Map && item.containsKey('weight') && item['weight'] != null) {
-            final String typeStr = item['weight'].toString().trim();
-            if (typeStr.isNotEmpty && !types.contains(typeStr)) types.add(typeStr);
-          }
-        }
-        return types.isNotEmpty ? types.join(', ') : 'Standard';
-      } else if (decoded is Map && decoded.containsKey('weight')) {
-        return decoded['weight'] ?? 'Standard';
-      }
-    } catch (e) {
-      debugPrint("Exception caught during parsing execution: $e");
-    }
-    return 'Standard';
   }
 
   String? _cleanBadgeText(String? tagText) {
@@ -146,226 +111,130 @@ class _ProductListPageState extends State<ProductListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: false,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 26),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+        titleSpacing: 0,
         title: const Text(
-          "Welcome to Spices Hub  🍔 💰",
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20),
+          "Products",
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 24),
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.black))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFF99417)))
           : _errorMessage != null
               ? _buildErrorWidget()
-              : SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 1. Credit Indicator Banner
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                        child: Row(
-                          children: [
-                            CircleAvatar(backgroundColor: Colors.grey.shade200, radius: 20),
-                            const SizedBox(width: 12),
-                            Text(
-                              "Credit: ₹$_creditLimit left",
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // 2. Search Text Input Row
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                height: 46,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: TextField(
-                                  controller: _searchController,
-                                  decoration: InputDecoration(
-                                    hintText: "Search for products...",
-                                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              height: 46,
-                              width: 46,
-                              decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8)),
-                              child: const Icon(Icons.search, color: Colors.white, size: 20),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // 3. Carousel Promotional Layout 
-                      _buildPromotionalBanner(),
-                      const SizedBox(height: 24),
-
-                      // 4. Categories Label Heading
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Text(
-                          "Categories",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // DESIGN UPDATE: Single Line Horizontal Scroll Filter Bar
-                      _buildHorizontalCategoryScroll(),
-                      const SizedBox(height: 24),
-
-                      // 5. Section Header Dynamic Title
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _selectedCategory == null ? "Products" : "Products in $_selectedCategory",
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
-                            ),
-                            Text(
-                              "${_filteredProducts.length} Items",
-                              style: TextStyle(fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // 6. Double Column Inventory Processing Pipeline Grid
-                      _filteredProducts.isEmpty 
+              : Column(
+                  children: [
+                    _buildSearchBar(),
+                    _buildCategoryHorizontalScroll(),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: _filteredProducts.isEmpty 
                           ? const Center(
                               child: Padding(
                                 padding: EdgeInsets.all(40.0),
                                 child: Text("No items match this filter category.", style: TextStyle(color: Colors.grey)),
                               ),
                             )
-                          : Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _filteredProducts.length,
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  childAspectRatio: 0.64,
-                                  mainAxisSpacing: 16,
-                                  crossAxisSpacing: 16,
-                                ),
-                                itemBuilder: (context, index) {
-                                  return _buildProductItemCard(context, _filteredProducts[index]);
-                                },
+                          : GridView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              itemCount: _filteredProducts.length,
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.72,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
                               ),
+                              itemBuilder: (context, index) {
+                                return _buildProductItemCard(context, _filteredProducts[index]);
+                              },
                             ),
-                      const SizedBox(height: 24),
-
-                      // 7. Footer Promotional Card Block
-                      _buildPromotionalBanner(),
-                      const SizedBox(height: 32),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
     );
   }
 
-  Widget _buildPromotionalBanner() {
+  Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Container(
-        width: double.infinity,
-        height: 140,
-        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text("Promotional Banners", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(width: 16, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-                const SizedBox(width: 4),
-                Container(width: 4, height: 4, decoration: BoxDecoration(color: Colors.grey.shade400, shape: BoxShape.circle)),
-                const SizedBox(width: 4),
-                Container(width: 4, height: 4, decoration: BoxDecoration(color: Colors.grey.shade400, shape: BoxShape.circle)),
-              ],
-            )
-          ],
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: "Search spices, nuts...",
+          prefixIcon: const Icon(Icons.search_outlined, color: Colors.grey, size: 22),
+          suffixIcon: _searchController.text.isNotEmpty 
+              ? IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.grey),
+                  onPressed: () {
+                    FocusScope.of(context).unfocus();
+                    _searchController.clear();
+                  },
+                )
+              : null,
+          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: Color(0xFFF99417), width: 1.5),
+          ),
         ),
       ),
     );
   }
 
-  /// NEW METHOD: Renders single-line premium scroll chips row component cleanly
-  Widget _buildHorizontalCategoryScroll() {
+  Widget _buildCategoryHorizontalScroll() {
     return SizedBox(
-      height: 42,
+      height: 38,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        // Count includes the structural 'All' chip (+1)
-        itemCount: _categories.length + 1, 
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _categories.length + 1,
         itemBuilder: (context, index) {
           final bool isAllChip = index == 0;
-          final String catName = isAllChip ? "All" : _categories[index - 1]["name"]!;
-          final String catIcon = isAllChip ? "📦" : _categories[index - 1]["icon"]!;
-          
-          final bool isSelected = isAllChip 
-              ? _selectedCategory == null 
-              : _selectedCategory == catName;
+          final String catName = isAllChip ? "All" : _categories[index - 1];
+          final bool isSelected = isAllChip ? _selectedCategory == null : _selectedCategory == catName;
 
           return Padding(
             padding: const EdgeInsets.only(right: 8.0),
-            child: InkWell(
+            child: GestureDetector(
               onTap: () => _selectCategoryFilter(isAllChip ? null : catName),
-              borderRadius: BorderRadius.circular(24),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.black : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(24),
+                  color: isSelected ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isSelected ? Colors.black : Colors.transparent,
+                    color: isSelected ? const Color(0xFF1E1E1E) : Colors.grey.shade300,
                     width: 1,
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Text(catIcon, style: const TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
-                    Text(
-                      catName,
-                      style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        fontSize: 13,
-                        color: isSelected ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  catName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w400,
+                    color: isSelected ? Colors.white : Colors.grey.shade500,
+                  ),
                 ),
               ),
             ),
@@ -375,27 +244,28 @@ class _ProductListPageState extends State<ProductListPage> {
     );
   }
 
-  Widget _buildProductItemCard(BuildContext context, Map<String, dynamic> product) {
-    final String trackingId = product['id'] ?? '';
+  Widget _buildProductItemCard(BuildContext context, Map<dynamic, dynamic> product) {
+    final String trackingId = product['id']?.toString() ?? '';
     final String name = product['productname'] ?? 'Unnamed Spice';
     final String? imagePath = product['images'];
-    
-    final String parsedTypeDisplay = _parseVariantType(product['variant']);
+    final String priceDisplay = product['price']?.toString() ?? '₹0';
     final String? badge = _cleanBadgeText(product['tags']);
 
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(
-          context,
-          '/product_detail_page',
-          arguments: {'id': trackingId},
-        );
+        if (trackingId.isNotEmpty) {
+          Navigator.pushNamed(
+            context,
+            '/product_detail_page',
+            arguments: {'id': trackingId},
+          );
+        }
       },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,10 +276,11 @@ class _ProductListPageState extends State<ProductListPage> {
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                      color: Colors.grey.shade50,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     ),
-                    child: Center(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
                       child: imagePath != null && imagePath.trim().isNotEmpty
                           ? Image.network(
                               imagePath,
@@ -421,55 +292,74 @@ class _ProductListPageState extends State<ProductListPage> {
                           : _buildImagePlaceholder(name),
                     ),
                   ),
-                  if (badge != null && badge.trim().isNotEmpty)
+                  if (badge != null && badge.isNotEmpty)
                     Positioned(
-                      top: 4,
-                      left: 4,
+                      top: 0,
+                      left: 0,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(4)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF1E1E1E),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(15),
+                            bottomRight: Radius.circular(10),
+                          ),
+                        ),
                         child: Text(
                           badge,
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black87),
+                          style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.favorite_border_rounded, color: Colors.grey.shade400, size: 20),
+                    ),
+                  ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(10.0),
+              padding: const EdgeInsets.all(12.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    parsedTypeDisplay, 
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black),
                   ),
                   const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.black),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          priceDisplay.contains('/kg') ? priceDisplay : "$priceDisplay/kg",
+                          style: const TextStyle(color: Color(0xFFF99417), fontSize: 15, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      child: const Text(
-                        "Add to List",
-                        style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold),
+                      ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF99417),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: const Text("Add to Cart", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -481,10 +371,13 @@ class _ProductListPageState extends State<ProductListPage> {
   }
 
   Widget _buildImagePlaceholder(String fallbackName) {
-    return Text(
-      "Image of\n$fallbackName",
-      textAlign: TextAlign.center,
-      style: const TextStyle(color: Colors.black87, fontSize: 12),
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        "Image of\n$fallbackName",
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+      ),
     );
   }
 

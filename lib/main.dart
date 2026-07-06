@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-// Make sure to generate this file using the FlutterFire CLI (`flutterfire configure`)
-// If you don't use the CLI, import your own Firebase Options configuration class.
-import 'features/auth/presentation/pages/login_page.dart';
 import 'firebase_options.dart'; 
 
+// Authentication & Core Pages
+import 'features/auth/presentation/pages/login_page.dart';
+import 'features/auth/presentation/pages/signup_page.dart';
+import 'features/auth/presentation/pages/home_page.dart'; 
+
+// Other Feature Pages
 import 'features/auth/presentation/pages/cart_page.dart';
 import 'features/auth/presentation/pages/profile_page.dart';
 import 'features/auth/presentation/pages/product_list_page.dart';
@@ -12,13 +15,10 @@ import 'features/auth/presentation/pages/product_detail_page.dart';
 import 'features/auth/presentation/pages/checkout_page.dart';
 import 'features/auth/presentation/pages/order_confirmation_page.dart';
 import 'features/auth/presentation/pages/order_history_page.dart';
-import 'features/auth/presentation/pages/signup_page.dart';
 
 void main() async {
-  // ✅ FIX: Ensures component binding is ready before calling asynchronous native tasks
   WidgetsFlutterBinding.ensureInitialized();
   
-  // ✅ FIX: Initializes Firebase correctly using web-safe cross-platform parameters
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -41,18 +41,95 @@ class SpicesHubApp extends StatelessWidget {
       home: const SplashScreen(), 
       routes: {
         '/login': (context) => const LoginPage(),
-        '/home': (context) => const MainWrapper(),
+        '/signup': (context) => const SignupPage(),
+        '/home': (context) => const NavigationShell(), // Updated core entry to navigation frame
         '/product_list': (context) => const ProductListPage(),
         '/product_detail_page': (context) => const ProductDetailPage(), 
         '/cart': (context) => const CartPage(),
         '/checkout': (context) => const CheckoutPage(),
         '/order_confirmation': (context) => const OrderConfirmationPage(),
         '/order_history': (context) => const OrderHistoryPage(),
-        '/signup': (context) => const SignupPage(),
-        
-        // ✅ FIX: Added placeholder route to safely intercept redirection logic from signup page
+        '/profile': (context) => const ProfilePage(),
         '/pending': (context) => const PendingApprovalPage(), 
       },
+    );
+  }
+}
+
+/// Dynamic State Controller Frame managing runtime index layouts 
+class NavigationShell extends StatefulWidget {
+  const NavigationShell({super.key});
+
+  @override
+  State<NavigationShell> createState() => _NavigationShellState();
+}
+
+class _NavigationShellState extends State<NavigationShell> {
+  int _selectedIndex = 0;
+
+  // Ordered layouts array matching the tabs mapping layout from image_ec2028.jpg
+  final List<Widget> _navigationViewTabs = [
+    const HomePage(),        // Index 0: Dashboard Stream (Removes internal bar configuration)
+    const ProductListPage(), // Index 1: Unified Inventory Grid Catalog
+    const CartPage(),        // Index 2: Current Checkout Cart Summary
+    const Center(child: Text("Wishlist", style: TextStyle(fontSize: 16, color: Colors.grey))), // Index 3: Saved/Liked Items Placeholder
+    const ProfilePage(),     // Index 4: User/Vendor Metrics Dashboard Screen
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F8F8),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _navigationViewTabs,
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: const Color(0xFFF99417),
+          unselectedItemColor: Colors.grey,
+          currentIndex: _selectedIndex,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+          elevation: 0,
+          onTap: (int incomingIndex) {
+            setState(() {
+              _selectedIndex = incomingIndex;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined), 
+              activeIcon: Icon(Icons.home), 
+              label: "Home"
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.format_list_bulleted_rounded), 
+              label: "Products"
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart_outlined), 
+              activeIcon: Icon(Icons.shopping_cart), 
+              label: "Cart"
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.favorite_border_rounded), 
+              activeIcon: Icon(Icons.favorite_rounded), 
+              label: "Wishlist"
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_circle_outlined), 
+              activeIcon: Icon(Icons.account_circle), 
+              label: "Account"
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -68,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFD923F), // Vibrant orange background
+      backgroundColor: const Color(0xFFFD923F), 
       body: Stack(
         children: [
           Positioned.fill(
@@ -77,7 +154,6 @@ class _SplashScreenState extends State<SplashScreen> {
               child: CustomPaint(painter: WavePainter()),
             ),
           ),
-          
           SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,9 +171,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ),
                 ),
-                
                 const Spacer(),
-                
                 Center(
                   child: Image.asset(
                     'assets/images/SplashScreen.png',
@@ -110,14 +184,11 @@ class _SplashScreenState extends State<SplashScreen> {
                     ),
                   ),
                 ),
-                
                 const Spacer(),
-                
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
                   child: GestureDetector(
                     onTap: () {
-                      // ✅ UPDATED: Directs to the core Tab shell so the bottom footer bar mounts safely right away
                       Navigator.pushReplacementNamed(context, '/login'); 
                     },
                     child: Container(
@@ -181,94 +252,6 @@ class WavePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
-}
-
-class MainWrapper extends StatefulWidget {
-  const MainWrapper({super.key});
-
-  @override
-  State<MainWrapper> createState() => _MainWrapperState();
-}
-
-class _MainWrapperState extends State<MainWrapper> {
-  int _currentIndex = 0;
-
-  // Modern navigation stack mapped to your UI mockup definitions
-  late final List<Widget> _pages;
-
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
-      const ProductListPage(), // ✅ UPDATED: Merged your real Product layout into Tab index 0
-      const CartPage(),        // Tab Index 1
-      const Center(
-        child: Text(
-          "Support Live Chat Desk Gateway", 
-          style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
-        ),
-      ),                       // Tab Index 2
-      const ProfilePage(),     // Tab Index 3
-    ];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: Colors.grey.shade200, width: 1.0),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: (index) => setState(() => _currentIndex = index),
-              backgroundColor: Colors.white,
-              type: BottomNavigationBarType.fixed,
-              selectedItemColor: Colors.black,
-              unselectedItemColor: Colors.grey.shade400,
-              selectedFontSize: 11,
-              unselectedFontSize: 11,
-              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, height: 1.6),
-              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, height: 1.6),
-              elevation: 0,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined), 
-                  activeIcon: Icon(Icons.home_rounded),
-                  label: 'Home',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.shopping_cart_outlined), 
-                  activeIcon: Icon(Icons.shopping_cart_rounded),
-                  label: 'Cart',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.chat_bubble_outline_rounded), 
-                  activeIcon: Icon(Icons.chat_bubble_rounded),
-                  label: 'Support',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline_rounded), 
-                  activeIcon: Icon(Icons.person_rounded),
-                  label: 'Profile',
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class PendingApprovalPage extends StatelessWidget {
