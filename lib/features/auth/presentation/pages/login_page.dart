@@ -27,70 +27,72 @@ class _LoginPageState extends State<LoginPage> {
 
   // WEB-SAFE LOGIN INTEGRATION LOGIC WITH SAFE CONTROLLER CAPTURE
   Future<void> _handleLogin() async {
-    // 1. Capture text strings IMMEDIATELY before any async gap to eliminate JS 'undefined' errors
-    final String username = _usernameController.text.trim();
-    final String password = _passwordController.text.trim();
+  // 1. Capture text strings IMMEDIATELY before any async gap to eliminate JS 'undefined' errors
+  final String username = _usernameController.text.trim();
+  final String password = _passwordController.text.trim();
 
-    if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+  setState(() => _isLoading = true);
 
-    try {
-      // 2. Fetch user profile payload map using local immutable strings
-      final dynamic rawResponse = await _backendService.loginUser(username, password);
+  try {
+    // 2. Fetch user profile payload map using local immutable strings
+    final dynamic rawResponse = await _backendService.loginUser(username, password);
 
-      // Defend against uninitialized/undefined map responses entirely
-      if (rawResponse == null || rawResponse is! Map<String, dynamic>) {
-        throw Exception("Invalid server profile configuration structure received.");
-      }
+    // Defend against uninitialized/undefined map responses entirely
+    if (rawResponse == null || rawResponse is! Map<String, dynamic>) {
+      throw Exception("Invalid server profile configuration structure received.");
+    }
 
-      final Map<String, dynamic> userProfile = rawResponse;
+    final Map<String, dynamic> userProfile = rawResponse;
 
-      // 3. Safely parse nesting structures to prevent runtime mapping exceptions
-      final dynamic targetPayload = userProfile.containsKey('data') && userProfile['data'] != null 
-          ? userProfile['data'] 
-          : userProfile;
+    // 3. Safely parse nesting structures to prevent runtime mapping exceptions
+    final dynamic targetPayload = userProfile.containsKey('data') && userProfile['data'] != null 
+        ? userProfile['data'] 
+        : userProfile;
 
-      if (targetPayload is Map<String, dynamic> && targetPayload.containsKey('uid') && targetPayload['uid'] != null) {
-        
-        // Ensure widget is still alive/mounted before executing navigation or state updates
-        if (!mounted) return;
-        
-        // ✅ INTEGRATED SESSION MANAGER CACHE LAYER
-        SessionManager.instance.currentUserProfile = userProfile;
-
-        // Extract and normalization of system status flags securely
-        final String status = (targetPayload['status'] ?? 'PENDING').toString().toUpperCase().trim();
-        
-        // 4. Conditional Router Module 
-        if (status == 'APPROVED') {
-          Navigator.pushReplacementNamed(context, '/home');
-        } else {
-          Navigator.pushReplacementNamed(context, '/pending');
-        }
-      } else {
-        throw Exception("Invalid account matching credentials setup profile configuration.");
-      }
-    } catch (e) {
-      // Clean runtime exception isolation strings cleanly for UI SnackBar rendering
-      final String fallbackMsg = e.toString().replaceAll("Exception:", "").trim();
-      debugPrint("Auth Error Trace: $fallbackMsg");
+    if (targetPayload is Map<String, dynamic> && targetPayload.containsKey('uid') && targetPayload['uid'] != null) {
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(fallbackMsg),
-            backgroundColor: Colors.redAccent.shade700,
-          ),
-        );
+      // Ensure widget is still alive/mounted before executing navigation or state updates
+      if (!mounted) return;
+      
+      // ✅ INTEGRATED SESSION MANAGER CACHE LAYER (Targeting unnested user model map data directly)
+      SessionManager.instance.currentUserProfile = targetPayload;
+
+      // Extract and normalization of system status flags securely
+      final String status = (targetPayload['status'] ?? 'PENDING').toString().toUpperCase().trim();
+      
+      // 4. Conditional Router Module with Suspension Gate handling
+      if (status == 'APPROVED') {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else if (status == 'INACTIVE') {
+        // ✅ ADDED: Route suspended profiles securely to the suspension alert gatehouse
+        Navigator.pushReplacementNamed(context, '/suspended');
+      } else {
+        Navigator.pushReplacementNamed(context, '/pending');
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    } else {
+      throw Exception("Invalid account matching credentials setup profile configuration.");
+    }
+  } catch (e) {
+    // Clean runtime exception isolation strings cleanly for UI SnackBar rendering
+    final String fallbackMsg = e.toString().replaceAll("Exception:", "").trim();
+    debugPrint("Auth Error Trace: $fallbackMsg");
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(fallbackMsg),
+          backgroundColor: Colors.redAccent.shade700,
+        ),
+      );
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _isLoading = false);
     }
   }
-
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(

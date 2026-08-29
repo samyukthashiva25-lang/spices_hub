@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:convert'; // Required for jsonDecode processing
 import '/services/backend_service.dart';
 import '/services/session_manager.dart';
+import '/services/wishlist_service.dart'; // Imported to power wishlist sync functionality
+import '/services/cart_service.dart'; // Imported to handle home grid cart addition pipelines
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,6 +14,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final BackendService _backendService = BackendService();
+  final CartService _cartService = CartService(); // Instantiated global data pipeline controller
 
   // Backend inventory arrays
   List<dynamic> _allProducts = [];       // Master data repository from backend
@@ -45,6 +48,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final List<dynamic> data = await _backendService.getAllSpices();
       
+      if (!mounted) return;
       setState(() {
         // Enforce the system business flag logic rule across the collection context
         _allProducts = data.where((product) {
@@ -60,6 +64,7 @@ class _HomePageState extends State<HomePage> {
       _applyFilters();
     } catch (e) {
       debugPrint("Backend Service fetching exception occurred: $e");
+      if (!mounted) return;
       setState(() {
         _errorMessage = e.toString().replaceAll("Exception:", "").trim();
         _isLoading = false;
@@ -124,6 +129,30 @@ class _HomePageState extends State<HomePage> {
     return 'Standard';
   }
 
+  /// Formulates default sub-variant structure objects to securely pass to Cart pipelines
+  Map<String, dynamic> _extractDefaultVariantStructure(Map<dynamic, dynamic> product) {
+    Map<String, dynamic> fallbackVariant = {
+      'type': 'Loose',
+      'weight': '1kg',
+      'price': product['price']?.toString() ?? '220',
+    };
+
+    final String? variantJson = product['variant']?.toString();
+    if (variantJson != null && variantJson.trim().isNotEmpty) {
+      try {
+        final dynamic decoded = jsonDecode(variantJson);
+        if (decoded is List && decoded.isNotEmpty) {
+          return Map<String, dynamic>.from(decoded.first);
+        } else if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      } catch (e) {
+        debugPrint("Error extracting fallback catalog item configurations: $e");
+      }
+    }
+    return fallbackVariant;
+  }
+
   /// Clears raw brackets formatting from server badge text outputs
   String? _cleanBadgeText(String? tagText) {
     if (tagText == null || tagText.trim().isEmpty || tagText.contains('{') || tagText.contains('[')) {
@@ -134,9 +163,9 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final String businessTitle = SessionManager.instance.currentUserProfile?['business_name'] ?? 
-                                 SessionManager.instance.currentUserProfile?['name'] ?? 
-                                 "Dashboard Hub";
+    final String businessTitle = SessionManager.instance.currentUserProfile?['shopname'] ;
+    
+                  
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
@@ -184,36 +213,39 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-     // bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  Widget _buildCreditBar() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-      color: const Color(0xFFFFF0E0), 
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.credit_card_rounded, color: Colors.black87, size: 20),
-              SizedBox(width: 8),
-              Text(
-                "Credit Balance :", 
-                style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15, color: Colors.black87)
-              ),
-            ],
-          ),
-          const Text(
-            "₹1,000 left", 
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFF99417))
-          ),
-        ],
-      ),
-    );
-  }
+ Widget _buildCreditBar() {
+  final String businessCredit = SessionManager.instance.currentUserProfile?['creditlimit']?.toString() ?? '0';
+  
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+    color: const Color(0xFFFFF0E0), 
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          // REMOVED 'const' from here because it prevents dynamic rendering down the tree
+          children: const [
+            Icon(Icons.credit_card_rounded, color: Colors.black87, size: 20),
+            SizedBox(width: 8),
+            Text(
+              "Credit Balance :", 
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15, color: Colors.black87)
+            ),
+          ],
+        ),
+        Text(
+          // Fixed: Removed the 'const' keyword that was previously before this Text widget
+          "₹ $businessCredit", 
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFF99417))
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildSearchBar() {
     return Padding(
@@ -398,12 +430,12 @@ class _HomePageState extends State<HomePage> {
       itemCount: _filteredProducts.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.70, // Slightly expanded to fit typography changes safely
+        childAspectRatio: 0.70, 
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
       itemBuilder: (context, index) {
-        final Map<dynamic, dynamic> product = _filteredProducts[index];
+        final Map<String, dynamic> product = Map<String, dynamic>.from(_filteredProducts[index]);
         
         final String name = product['productname'] ?? 'Unnamed Spice';
         final String? imagePath = product['images'];
@@ -411,6 +443,7 @@ class _HomePageState extends State<HomePage> {
         final String? badgeText = _cleanBadgeText(product['tags']);
 
         return _productCard(
+          product: product,
           name: name,
           imagePath: imagePath,
           variantDisplay: parsedVariantDisplay,
@@ -422,12 +455,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _productCard({
+    required Map<String, dynamic> product,
     required String name,
     required String? imagePath,
     required String variantDisplay,
     required String? badge,
     required String productId,
   }) {
+    // Evaluates if this specific product already lives inside the wishlist repository cache
+    final bool isFavorite = WishlistService.instance.items.any((item) => item['id'] == productId);
+
     return GestureDetector(
       onTap: () {
         if (productId.isNotEmpty) {
@@ -490,9 +527,39 @@ class _HomePageState extends State<HomePage> {
                     Positioned(
                       top: 4,
                       right: 4,
-                      child: IconButton(
-                        icon: const Icon(Icons.favorite_border_rounded, color: Colors.grey, size: 20),
-                        onPressed: () {},
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (isFavorite) {
+                              WishlistService.instance.removeFromWishlist(productId);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("$name removed from Wishlist"),
+                                  backgroundColor: const Color(0xFF1E1E1E),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            } else {
+                              WishlistService.instance.addToWishlist(product, variantDisplay);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text("$name added to Wishlist! ❤️"),
+                                  backgroundColor: const Color(0xFF1E1E1E),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          });
+                        },
+                        child: Container(
+                          decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded, 
+                            color: isFavorite ? const Color(0xFFE57373) : Colors.grey, 
+                            size: 20,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -521,7 +588,30 @@ class _HomePageState extends State<HomePage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      // Wired directly up to CartService injection state triggers
+                      onPressed: () {
+                        final Map<String, dynamic> activeVariant = _extractDefaultVariantStructure(product);
+                        
+                        _cartService.addToCart(
+                          productId: productId,
+                          productName: name,
+                          imagePath: imagePath ?? '',
+                          variant: activeVariant,
+                          quantity: 1, // Default quantity incremented from Home catalogue item grid tap triggers
+                        );
+
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: const Color(0xFFF99417),
+                            duration: const Duration(milliseconds: 900),
+                            content: Text(
+                              "Added $name to your cart successfully!",
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFF99417),
                         foregroundColor: Colors.white,
@@ -583,22 +673,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-  // Widget _buildBottomNavigationBar() {
-  //   return BottomNavigationBar(
-  //     type: BottomNavigationBarType.fixed,
-  //     backgroundColor: Colors.white,
-  //     selectedItemColor: const Color(0xFFF99417),
-  //     unselectedItemColor: Colors.grey,
-  //     currentIndex: 0,
-  //     selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-  //     unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-  //     items: const [
-  //       BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: "Home"),
-  //       BottomNavigationBarItem(icon: Icon(Icons.format_list_bulleted_rounded), label: "Products"),
-  //       BottomNavigationBarItem(icon: Icon(Icons.shopping_cart_outlined), label: "Cart"),
-  //       BottomNavigationBarItem(icon: Icon(Icons.favorite_outline_rounded), label: "Wishlist"),
-  //       BottomNavigationBarItem(icon: Icon(Icons.account_circle_outlined), label: "Account"),
-  //     ],
-  //   );
-  }
+}

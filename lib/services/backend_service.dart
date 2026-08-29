@@ -144,4 +144,31 @@ class BackendService {
     final response = await http.get(Uri.parse("$baseUrl/orders/user/$userId"), headers: _headers);
     return _handleResponse(response) as List<dynamic>;
   }
+
+  
+
+
+  // 💡 Add this method inside your BackendService class
+  Future<List<dynamic>> getUserOrderHistory(String userId) async {
+    // Replace baseUrl with whatever your class uses (e.g., your local ip or localhost url configuration)
+    final url = Uri.parse("$baseUrl/orders/user/$userId"); 
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else {
+        throw Exception("Server responded with error code: ${response.statusCode}");
+      }
+    } catch (e) {
+      throw Exception("Failed to connect to the wholesale orders server: $e");
+    }
+  }
 }
+
