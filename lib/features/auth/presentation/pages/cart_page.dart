@@ -58,8 +58,8 @@ Future<void> _executeCheckoutProcess(String shippingAddress) async {
 
     setState(() => _isProcessingCheckout = true);
     final String mappedPaymentMethod = _selectedPaymentMethod == "credit" ? "CREDIT_LIMIT" : "COD";
-    //final url = Uri.parse("https://spiceshub-production-2783.up.railway.app/api/orders/checkout/$_currentUserId");
-final url = Uri.parse("http://localhost:8080/api/orders/checkout/$_currentUserId");
+    final url = Uri.parse("https://spiceshub-production-2783.up.railway.app/api/orders/checkout/$_currentUserId");
+//final url = Uri.parse("http://localhost:8080/api/orders/checkout/$_currentUserId");
     try {
       final response = await http.post(
         url,
