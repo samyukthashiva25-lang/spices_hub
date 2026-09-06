@@ -60,8 +60,8 @@ class CartService extends ChangeNotifier {
   CartService._internal();
 
   // Updated to 10.0.2.2 to allow Android Emulators to interface with your local Spring Boot host safely
-  //final String _baseUrl = "https://spiceshub-production-2783.up.railway.app/api/cart";
-final String _baseUrl = "http://localhost:8080/api/cart";
+final String _baseUrl = "https://spiceshub-production-2783.up.railway.app/api/cart";
+//final String _baseUrl = "http://localhost:8080/api/cart";
   
   final Map<String, CartItem> _items = {};
 
