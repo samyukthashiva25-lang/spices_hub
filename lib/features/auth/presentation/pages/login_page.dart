@@ -13,6 +13,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _backendService = BackendService();
   bool _isLoading = false;
+  bool _obscurePassword = true; // State toggle for password visibility
 
   // Controllers for processing data safely
   final _usernameController = TextEditingController();
@@ -204,24 +205,36 @@ class _LoginPageState extends State<LoginPage> {
                         Align(alignment: Alignment.centerLeft, child: _buildLabel("Password")),
                         TextFormField(
                           controller: _passwordController,
-                          obscureText: true, // Flat unmasked tracking input layout styling matching specification wireframe
+                          obscureText: _obscurePassword, // Connected to state toggle
                           validator: (value) => value == null || value.trim().isEmpty ? 'Please enter your account password' : null,
-                          decoration: _buildInputDecoration("Enter your password"),
+                          decoration: _buildInputDecoration("Enter your password").copyWith(
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
                         ),
 
                         const SizedBox(height: 12),
                         
                         // Right-aligned Interactive Forgot Trigger Option Link
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: GestureDetector(
-                            onTap: () => Navigator.pushNamed(context, '/forgot-password'),
-                            child: const Text(
-                              "Forgot Password?",
-                              style: TextStyle(color: Color(0xFFF99417), fontWeight: FontWeight.w600, fontSize: 14),
-                            ),
-                          ),
-                        ),
+                        // Align(
+                        //   alignment: Alignment.centerRight,
+                        //   child: GestureDetector(
+                        //     onTap: () => Navigator.pushNamed(context, '/forgot-password'),
+                        //     child: const Text(
+                        //       "Forgot Password?",
+                        //       style: TextStyle(color: Color(0xFFF99417), fontWeight: FontWeight.w600, fontSize: 14),
+                        //     ),
+                        //   ),
+                        // ),
 
                         const SizedBox(height: 28),
 

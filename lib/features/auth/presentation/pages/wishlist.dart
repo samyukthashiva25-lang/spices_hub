@@ -1,6 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import '/services/wishlist_service.dart'; // Imported to point directly to our central state cache
-import '/services/cart_service.dart'; // Imported to handle pipeline cart additions
+import '/services/wishlist_service.dart';
+import '/services/cart_service.dart';
 
 class WishlistPage extends StatefulWidget {
   const WishlistPage({super.key});
@@ -10,10 +12,9 @@ class WishlistPage extends StatefulWidget {
 }
 
 class _WishlistPageState extends State<WishlistPage> {
-  final CartService _cartService = CartService(); // Instantiated central cart engine reference
+  final CartService _cartService = CartService();
   
   void _removeItem(String targetId) {
-    // Mutation goes through the service layer which handles automatic notification broadcasts
     WishlistService.instance.removeFromWishlist(targetId);
     
     ScaffoldMessenger.of(context).showSnackBar(
@@ -25,23 +26,20 @@ class _WishlistPageState extends State<WishlistPage> {
     );
   }
 
-  /// Converts wishlist item shape data safely into your global CartItem variant entity payload map
   Map<String, dynamic> _buildCartVariantData(Map<String, dynamic> wishlistRawItem) {
-    // Sanitize string characters out of prices to get raw integers (e.g., "₹240/kg" -> "240")
     final String rawPriceStr = (wishlistRawItem["price"] ?? '220')
         .toString()
         .replaceAll(RegExp(r'[^0-9.]'), '');
     
     return {
       'type': wishlistRawItem["type"] ?? 'Loose',
-      'weight': '1kg', // Matches standard fallback units across home/catalog grids
+      'weight': '1kg',
       'price': rawPriceStr.isNotEmpty ? rawPriceStr : '220',
     };
   }
 
   @override
   Widget build(BuildContext context) {
-    // ValueListenableBuilder intercepts state notification shifts and refreshes down the tree automatically
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: WishlistService.instance,
       builder: (context, wishlistItems, child) {
@@ -55,9 +53,7 @@ class _WishlistPageState extends State<WishlistPage> {
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.black, size: 26),
               onPressed: () {
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                }
+                Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
               },
             ),
             titleSpacing: 0,
@@ -120,6 +116,7 @@ class _WishlistPageState extends State<WishlistPage> {
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Product Image Container Frame
             Container(
@@ -131,22 +128,28 @@ class _WishlistPageState extends State<WishlistPage> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: imagePath.startsWith('http')
-                    ? Image.network(
-                        imagePath,
+                child: imagePath.startsWith('data:image') && imagePath.contains(';base64,')
+                    ? Image.memory(
+                        base64Decode(imagePath.split(';base64,')[1]),
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
+                        errorBuilder: (c, e, s) => _buildFallbackIcon(),
                       )
-                    : Image.asset(
-                        imagePath.isNotEmpty ? imagePath : 'assets/images/placeholder.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(),
-                      ),
+                    : imagePath.startsWith('http')
+                        ? Image.network(
+                            imagePath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => _buildFallbackIcon(),
+                          )
+                        : Image.asset(
+                            imagePath.isNotEmpty ? imagePath : 'assets/images/placeholder.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => _buildFallbackIcon(),
+                          ),
               ),
             ),
             const SizedBox(width: 14),
             
-            // Product Details Block
+            // Product Details & Actions Block
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,77 +173,68 @@ class _WishlistPageState extends State<WishlistPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item["price"] ?? '₹0/kg',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFF99417),
-                    ),
+                  const SizedBox(height: 10),
+                  
+                  // Action Buttons Row moved inside Expanded column to prevent horizontal overflow
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          final Map<String, dynamic> cartReadyVariant = _buildCartVariantData(item);
+
+                          _cartService.addToCart(
+                            productId: targetId,
+                            productName: name,
+                            imagePath: imagePath,
+                            variant: cartReadyVariant,
+                            quantity: 1,
+                          );
+
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: const Color(0xFFF99417),
+                              duration: const Duration(milliseconds: 900),
+                              content: Text(
+                                "Added $name to your cart!",
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF99417),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          "Add to Cart",
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Color(0xFFE57373),
+                          size: 26,
+                        ),
+                        onPressed: () => _removeItem(targetId),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-
-            // Action Buttons Row Context
-            Row(
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    // Normalize configuration attributes structure maps
-                    final Map<String, dynamic> cartReadyVariant = _buildCartVariantData(item);
-
-                    // Inject structured variant data straight into our global pipeline service setup
-                    _cartService.addToCart(
-                      productId: targetId,
-                      productName: name,
-                      imagePath: imagePath,
-                      variant: cartReadyVariant,
-                      quantity: 1, // Default base package line incremented from grid list click events
-                    );
-
-                    // Drop clean visual feedback notification toasts to the active screen view context
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: const Color(0xFFF99417),
-                        duration: const Duration(milliseconds: 900),
-                        content: Text(
-                          "Added $name to your cart!",
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF99417),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    "Add to Cart",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: Color(0xFFE57373),
-                    size: 26,
-                  ),
-                  onPressed: () => _removeItem(targetId),
-                ),
-              ],
-            )
           ],
         ),
       ),

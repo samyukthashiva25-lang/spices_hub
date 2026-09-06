@@ -348,7 +348,9 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         scrolledUnderElevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black, size: 26),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+          },
         ),
         title: const Text(
           "Order History",
@@ -492,7 +494,7 @@ Text(
                         child: const Row(
                           children: [
                             Text(
-                              "Reorder",
+                              "View Details",
                               style: TextStyle(color: Color(0xFFF99417), fontSize: 14, fontWeight: FontWeight.bold),
                             ),
                             SizedBox(width: 4),

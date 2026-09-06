@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:spices_hub/services/cart_service.dart'; // 💡 Make sure this points to your exact path
 import 'dart:convert'; 
+import '/services/backend_service.dart';
 import 'package:http/http.dart' as http;
 
 class CartPage extends StatefulWidget {
@@ -9,8 +10,9 @@ class CartPage extends StatefulWidget {
   @override
   State<CartPage> createState() => _CartPageState();
 }
-
 class _CartPageState extends State<CartPage> {
+  final BackendService _backendService = BackendService();
+
   final CartService _cartService = CartService();
   bool _isSyncingWithBackend = true;
   bool _isProcessingCheckout = false; 
@@ -56,8 +58,8 @@ Future<void> _executeCheckoutProcess(String shippingAddress) async {
 
     setState(() => _isProcessingCheckout = true);
     final String mappedPaymentMethod = _selectedPaymentMethod == "credit" ? "CREDIT_LIMIT" : "COD";
-    final url = Uri.parse("http://localhost:8080/api/orders/checkout/$_currentUserId");
-
+    //final url = Uri.parse("https://spiceshub-production-2783.up.railway.app/api/orders/checkout/$_currentUserId");
+final url = Uri.parse("http://localhost:8080/api/orders/checkout/$_currentUserId");
     try {
       final response = await http.post(
         url,
@@ -106,138 +108,124 @@ Future<void> _executeCheckoutProcess(String shippingAddress) async {
   void _showOrderPlacedBottomSheet(Map<String, dynamic> orderDetails, double capturedTotal) {
     final String paymentMethodText = _selectedPaymentMethod == "credit" ? "CREDIT LIMIT" : "COD";
 
-    showModalBottomSheet(
+showModalBottomSheet(
       context: context,
       isDismissible: false, 
       enableDrag: false,     
       backgroundColor: Colors.white,
+      isScrollControlled: true, // Required for bottom sheet to handle scrolling properly
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (BuildContext sheetContext) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
-          width: double.infinity,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                width: 90,
-                height: 90,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE6F4EA),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.done_rounded,
-                  color: Color(0xFF137333),
-                  size: 52,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "Order Placed!",
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Your order has been placed successfully.\nWe'll notify you when it's confirmed.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 14, height: 1.4),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      "Order ID : ",
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500),
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+              width: double.infinity,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      "${orderDetails['orderId'] ?? 'ORD_4FCF99E5'}",
-                      style: const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: Row(
-                  children: [
-                    Text(
-                      "Amount : ",
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "₹ ${_formatCurrency(capturedTotal)} ($paymentMethodText)",
-                      style: const TextStyle(color: Color(0xFFF99417), fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF99417),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
                   ),
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pushReplacementNamed(context, '/order_history');
-                  },
-                  child: const Text(
-                    "View Order Details",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  const SizedBox(height: 24),
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFE6F4EA),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.done_rounded,
+                      color: Color(0xFF137333),
+                      size: 52,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Order Placed!",
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Your order has been placed successfully.\nWe'll notify you when it's confirmed.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 14, height: 1.4),
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          "Order ID : ",
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${orderDetails['orderId'] ?? 'ORD_4FCF99E5'}",
+                          style: const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Row(
+                      children: [
+                        Text(
+                          "Amount : ",
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "₹ ${_formatCurrency(capturedTotal)} ($paymentMethodText)",
+                          style: const TextStyle(color: Color(0xFFF99417), fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF99417),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        Navigator.pushReplacementNamed(context, '/order_history');
+                      },
+                      child: const Text(
+                        "View Order Details",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              // SizedBox(
-              //   width: double.infinity,
-              //   height: 52,
-              //   child: OutlinedButton(
-              //     style: OutlinedButton.styleFrom(
-              //       side: BorderSide(color: Colors.grey.shade200, width: 1.5),
-              //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              //       backgroundColor: Colors.white,
-              //       foregroundColor: Colors.black87,
-              //     ),
-              //     onPressed: () {
-              //       Navigator.pop(sheetContext);
-              //       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-              //     },
-              //     child: const Text(
-              //       "Continue Shopping",
-              //       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
-              //     ),
-              //   ),
-              // ),
-              // const SizedBox(height: 8),
-            ],
+            ),
           ),
         );
       },
@@ -269,11 +257,16 @@ Future<void> _executeCheckoutProcess(String shippingAddress) async {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 26),
-          onPressed: () {
-            Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-          },
-        ),
+  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
+  onPressed: () {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    }
+  },
+),
+ 
         titleSpacing: 0,
         title: Row(
           children: [

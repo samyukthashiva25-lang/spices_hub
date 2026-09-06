@@ -60,7 +60,9 @@ class CartService extends ChangeNotifier {
   CartService._internal();
 
   // Updated to 10.0.2.2 to allow Android Emulators to interface with your local Spring Boot host safely
-  final String _baseUrl = "http://localhost:8080/api/cart";
+  //final String _baseUrl = "https://spiceshub-production-2783.up.railway.app/api/cart";
+final String _baseUrl = "http://localhost:8080/api/cart";
+  
   final Map<String, CartItem> _items = {};
 
   List<CartItem> get items => _items.values.toList();
@@ -73,7 +75,7 @@ class CartService extends ChangeNotifier {
 
   int get totalItemCount {
     int count = 0;
-    _items.forEach((key, item) => count += item.quantity);
+    _items.forEach((key, item) => count += 1);
     return count;
   }
 

@@ -9,4 +9,7 @@ class SessionManager {
   void clearSession() {
     currentUserProfile = null;
   }
+
+  // Helper getter to easily verify authentication status across screens
+  bool get isLoggedIn => currentUserProfile != null;
 }

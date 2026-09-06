@@ -16,7 +16,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   final CartService _cartService = CartService();
   
   // Base quantity matches reference mockup configurations
-  int _quantityAmount = 10;
+  int _quantityAmount = 1;
 
   Map<String, dynamic>? _productData;
   List<dynamic> _parsedVariants = [];

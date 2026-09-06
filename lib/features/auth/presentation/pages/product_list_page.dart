@@ -169,8 +169,10 @@ class _ProductListPageState extends State<ProductListPage> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 26),
+          onPressed: () {
+            Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+          },
         ),
         title: const Text(
           "All Products",
@@ -332,7 +334,7 @@ class _ProductListPageState extends State<ProductListPage> {
               Icon(Icons.search_off_rounded, size: 60, color: Colors.grey),
               SizedBox(height: 12),
               Text(
-                "No products match your parameters.",
+                "No products match.",
                 style: TextStyle(color: Colors.grey, fontSize: 15, fontWeight: FontWeight.w500),
                 textAlign: TextAlign.center,
               ),

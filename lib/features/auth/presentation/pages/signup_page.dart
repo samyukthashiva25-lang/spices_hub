@@ -269,7 +269,7 @@ class _SignupPageState extends State<SignupPage> {
                         onTap: () => Navigator.pushReplacementNamed(context, '/login'),
                         child: const Text(
                           "Sign in", 
-                          style: TextStyle(color: Color(0xFF007AFF), fontWeight: FontWeight.bold, fontSize: 14),
+                          style: TextStyle(color: Color(0xFFFD923F), fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                       ),
                     ],

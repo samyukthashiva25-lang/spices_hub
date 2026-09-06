@@ -13,6 +13,17 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Safely redirect back to login if session profile is wiped out
+    if (SessionManager.instance.currentUserProfile == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      });
+    }
+  }
   final BackendService _backendService = BackendService();
   final CartService _cartService = CartService(); // Instantiated global data pipeline controller
 
@@ -121,7 +132,7 @@ class _HomePageState extends State<HomePage> {
         }
         return types.isNotEmpty ? types.join(', ') : 'Standard';
       } else if (decoded is Map && decoded.containsKey('weight')) {
-        return decoded['weight'] ?? 'Standard';
+        return decoded['weight']?.toString() ?? 'Standard';
       }
     } catch (e) {
       debugPrint("Exception caught during parsing execution: $e");
@@ -163,9 +174,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final String businessTitle = SessionManager.instance.currentUserProfile?['shopname'] ;
-    
-                  
+    // Added a null-safe fallback so missing profile data won't crash the app with a TypeError
+    final String businessTitle = SessionManager.instance.currentUserProfile?['shopname']?.toString() ?? 'SpicesHub';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F8F8),
@@ -177,13 +187,13 @@ class _HomePageState extends State<HomePage> {
           businessTitle, 
           style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 22)
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_active_rounded, color: Color(0xFFF99417), size: 28),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.notifications_active_rounded, color: Color(0xFFF99417), size: 28),
+        //     onPressed: () {},
+        //   ),
+        //   const SizedBox(width: 8),
+        // ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFF99417)))
@@ -216,36 +226,34 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
- Widget _buildCreditBar() {
-  final String businessCredit = SessionManager.instance.currentUserProfile?['creditlimit']?.toString() ?? '0';
-  
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-    color: const Color(0xFFFFF0E0), 
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          // REMOVED 'const' from here because it prevents dynamic rendering down the tree
-          children: const [
-            Icon(Icons.credit_card_rounded, color: Colors.black87, size: 20),
-            SizedBox(width: 8),
-            Text(
-              "Credit Balance :", 
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15, color: Colors.black87)
-            ),
-          ],
-        ),
-        Text(
-          // Fixed: Removed the 'const' keyword that was previously before this Text widget
-          "₹ $businessCredit", 
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFF99417))
-        ),
-      ],
-    ),
-  );
-}
+  Widget _buildCreditBar() {
+    final String businessCredit = SessionManager.instance.currentUserProfile?['creditlimit']?.toString() ?? '0';
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+      color: const Color(0xFFFFF0E0), 
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.credit_card_rounded, color: Colors.black87, size: 20),
+              SizedBox(width: 8),
+              Text(
+                "Credit Balance :", 
+                style: TextStyle(fontWeight: FontWeight.w500, fontSize: 15, color: Colors.black87)
+              ),
+            ],
+          ),
+          Text(
+            "₹ $businessCredit", 
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFF99417))
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildSearchBar() {
     return Padding(
@@ -415,7 +423,7 @@ class _HomePageState extends State<HomePage> {
             Icon(Icons.search_off_rounded, size: 60, color: Colors.grey),
             SizedBox(height: 12),
             Text(
-              "No products match your description.",
+              "No products match.",
               style: TextStyle(color: Colors.grey, fontSize: 15, fontWeight: FontWeight.w500),
             ),
           ],
@@ -588,7 +596,6 @@ class _HomePageState extends State<HomePage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      // Wired directly up to CartService injection state triggers
                       onPressed: () {
                         final Map<String, dynamic> activeVariant = _extractDefaultVariantStructure(product);
                         
@@ -597,7 +604,7 @@ class _HomePageState extends State<HomePage> {
                           productName: name,
                           imagePath: imagePath ?? '',
                           variant: activeVariant,
-                          quantity: 1, // Default quantity incremented from Home catalogue item grid tap triggers
+                          quantity: 1,
                         );
 
                         ScaffoldMessenger.of(context).clearSnackBars();

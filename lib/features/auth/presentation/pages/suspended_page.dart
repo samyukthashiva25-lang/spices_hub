@@ -14,7 +14,7 @@ class _SuspendedPageState extends State<SuspendedPage> {
 
   /// Pure clear-out helper to switch back accounts
   Future<void> _handleSignOutChange() async {
-    await FirebaseAuth.instance.signOut();
+   // await FirebaseAuth.instance.signOut();
     SessionManager.instance.clearSession();
     if (mounted) {
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);

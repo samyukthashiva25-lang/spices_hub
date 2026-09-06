@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 
 class BackendService {
   // final String baseUrl = "https://spiceshub-production.up.railway.app/api";
-  final String baseUrl = "http://localhost:8080/api"; // For local development
-
+  //final String baseUrl = "https://spiceshub-production-2783.up.railway.app/api"; // For local development
+final String baseUrl = "http://localhost:8080/api"; 
   // Shared headers helper
   Map<String, String> get _headers => {
         "Content-Type": "application/json",

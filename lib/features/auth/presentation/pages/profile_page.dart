@@ -8,7 +8,7 @@ class ProfilePage extends StatelessWidget {
 
   /// Logs out the user safely, clears memory caches, and purges navigation history
   Future<void> _handleLogoutSession(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
+    //await FirebaseAuth.instance.signOut();
     SessionManager.instance.clearSession();
     if (context.mounted) {
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
@@ -155,14 +155,14 @@ class ProfilePage extends StatelessWidget {
                                 // Add edit profile path logic here
                               },
                               child: const Row(
-                                children: [
-                                  Icon(Icons.edit_outlined, color: Color(0xFFF99417), size: 16),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    "Edit Profile",
-                                    style: TextStyle(color: Color(0xFFF99417), fontSize: 14, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
+                                // children: [
+                                //   Icon(Icons.edit_outlined, color: Color(0xFFF99417), size: 16),
+                                //   SizedBox(width: 4),
+                                //   // Text(
+                                //   //   "Edit Profile",
+                                //   //   style: TextStyle(color: Color(0xFFF99417), fontSize: 14, fontWeight: FontWeight.bold),
+                                //   // ),
+                                // ],
                               ),
                             ),
                           ],
@@ -246,7 +246,7 @@ class ProfilePage extends StatelessWidget {
             _buildActionMenuCard(
               icon: Icons.inventory_2_outlined,
               title: "Order History",
-              onTap: () => Navigator.pushNamed(context, '/order_history_page'),
+              onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/order_history', (route) => false),
             ),
             
             // Connected directly with the Wishlist listener component state parameters
@@ -262,21 +262,21 @@ class ProfilePage extends StatelessWidget {
               },
             ),
             
-            _buildActionMenuCard(
-              icon: Icons.notifications_none_rounded,
-              title: "Notifications",
-              onTap: () {},
-            ),
-            _buildActionMenuCard(
-              icon: Icons.help_outline_rounded,
-              title: "Help & Support",
-              onTap: () {},
-            ),
-            _buildActionMenuCard(
-              icon: Icons.description_outlined,
-              title: "Terms & Privacy",
-              onTap: () {},
-            ),
+            // _buildActionMenuCard(
+            //   icon: Icons.notifications_none_rounded,
+            //   title: "Notifications",
+            //   onTap: () {},
+            // ),
+            // _buildActionMenuCard(
+            //   icon: Icons.help_outline_rounded,
+            //   title: "Help & Support",
+            //   onTap: () {},
+            // ),
+            // _buildActionMenuCard(
+            //   icon: Icons.description_outlined,
+            //   title: "Terms & Privacy",
+            //   onTap: () {},
+            // ),
             const SizedBox(height: 24),
           ],
         ),
